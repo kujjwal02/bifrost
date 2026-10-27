@@ -7,7 +7,7 @@
 A [herdr](https://herdr.dev) plugin for agents on remote machines. Their dev servers, the links they open
 and the files they write show up in the browser on the computer you sit at, with nothing to forward by hand.
 
-![A dev server on the remote machine afk opens at 5173.afk.localhost in the local browser](docs/ferry.svg)
+![What ferry does: a remote dev server, a link, a file and a Ctrl+clicked localhost link each open in the local browser](docs/ferry.svg)
 
 - **Ports.** Every port a saved machine listens on opens about a second later at
   `http://<port>.<machine>.localhost`. Two machines can both run port 3000; each URL names its machine.
@@ -83,6 +83,8 @@ The forward binds `127.0.0.1` and lasts until the connection drops.
 
 ## Links the remote opens
 
+![gh auth login on afk opens a herdr popup asking to open github.com/login/device](docs/links.svg)
+
 `ferry setup afk` installs a small opener script on afk as `~/.local/share/ferry/bin/xdg-open`. It also
 sets `PATH` and `BROWSER` in the rc file of your login shell there. Restart the shells and agents on afk
 afterwards. If that rc file is a symlink (a dotfiles manager), ferry leaves it alone and prints the two
@@ -108,6 +110,8 @@ When two computers watch the same machine, the one whose herdr shows that machin
 
 ## Remote files
 
+![xdg-open report.html on afk opens the report, with its charts, at files.afk.localhost](docs/files.svg)
+
 ```sh
 ferry open afk:~/project/report.html
 ```
@@ -116,6 +120,14 @@ On the remote, `xdg-open report.html` does the same. The page loads at
 `http://files.afk.localhost/<signature>/<folder>/report.html`, so its relative links (CSS, images, other
 pages in the folder) load too. Each request reads the file again, so a reload shows the current version.
 See [SECURITY.md](SECURITY.md) for how file links stay inside their folder.
+
+## Localhost links in herdr
+
+![Ctrl+click on http://localhost:5173 in a remote pane opens afk's server](docs/click.svg)
+
+A server on the remote prints `http://localhost:5173`. Ctrl+click it in herdr, and ferry opens
+`http://5173.afk.localhost` when the machine herdr shows listens on that port. Otherwise the link opens
+unchanged. herdr passes link clicks to plugins only while `ui.mouse_capture` is on, its default.
 
 ## Commands
 
