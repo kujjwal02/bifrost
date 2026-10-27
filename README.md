@@ -1,5 +1,7 @@
 # bifrost
 
+![bifrost: beams from three remote machines land on the local laptop](docs/hero.jpg)
+
 [![CI](https://github.com/kujjwal02/bifrost/actions/workflows/ci.yml/badge.svg)](https://github.com/kujjwal02/bifrost/actions/workflows/ci.yml)
 [![herdr](https://img.shields.io/badge/herdr-%E2%89%A50.9.0-cba6f7)](https://herdr.dev/plugins/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
