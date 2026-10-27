@@ -43,7 +43,7 @@ def popup(lines):
     parts = [f'<g transform="translate({BROWSER_X} 0)">',
              f'<rect width="{width}" height="{LANE_H - 18}" rx="10" fill="{BASE}" stroke="{MAUVE}" stroke-width="1.5"/>',
              f'<rect x="1" y="1" width="{width - 2}" height="26" rx="9" fill="{SURFACE}"/>',
-             text(14, 19, "Ferry: open this page?", MAUVE, 12, weight=700)]
+             text(14, 19, "Bifrost: open this page?", MAUVE, 12, weight=700)]
     for index, line in enumerate(lines):
         parts.append(text(14, 50 + index * 22, line, TEXT, 13))
     parts.append("</g>")
@@ -123,7 +123,7 @@ def hero():
         body.append(f'<g transform="translate({margin_x} {header_h + index * LANE_H})">{draw()}</g>')
     height = header_h + len(LANES) * LANE_H + 4
     return svg(LANE_W + 2 * margin_x, height, "".join(body),
-               "What ferry does: remote ports, links, files and Ctrl+clicked links open in this computer's browser")
+               "What bifrost does: remote ports, links, files and Ctrl+clicked links open in this computer's browser")
 
 
 def box(x, y, width, height, title, subtitle, fill=MANTLE, stroke=SURFACE, title_fill=TEXT, sub_fill=OVERLAY):
@@ -153,7 +153,7 @@ def architecture():
     body = [markers([BLUE, GREEN, MAUVE, OVERLAY])]
     # Zones.
     body.append(f'<rect x="196" y="40" width="228" height="306" rx="12" fill="none" stroke="{SURFACE}" stroke-dasharray="4 4"/>')
-    body.append(text(310, 62, "ferry daemon", TEXT, 13, SANS, 700, "middle"))
+    body.append(text(310, 62, "bifrost daemon", TEXT, 13, SANS, 700, "middle"))
     body.append(f'<rect x="604" y="40" width="336" height="392" rx="12" fill="none" stroke="{SURFACE}" stroke-dasharray="4 4"/>')
     body.append(text(772, 62, "remote machine (afk)", TEXT, 13, SANS, 700, "middle"))
     body.append(text(100, 30, "your computer", OVERLAY, 12, SANS, 600, "middle"))
@@ -185,19 +185,19 @@ def architecture():
     # The opener feeding watch.sh.
     body.append(box(622, 362, 70, 50, "agent", "xdg-open"))
     body.append(box(710, 362, 96, 50, "opener", "as xdg-open"))
-    body.append(box(824, 362, 98, 50, "queue", "~/.cache/ferry"))
+    body.append(box(824, 362, 98, 50, "queue", "~/.cache/bifrost"))
     body.append(link(692, 387, 708, 387, OVERLAY))
     body.append(link(806, 387, 822, 387, OVERLAY))
     body.append(link(873, 362, 873, 317, OVERLAY))
-    return svg(960, 452, "".join(body), "ferry architecture: one SSH master per machine carries port forwards, file reads and the watch protocol")
+    return svg(960, 452, "".join(body), "bifrost architecture: one SSH master per machine carries port forwards, file reads and the watch protocol")
 
 
 def main():
-    (DOCS / "ferry.svg").write_text(hero())
+    (DOCS / "bifrost.svg").write_text(hero())
     (DOCS / "architecture.svg").write_text(architecture())
     for name, draw in LANES.items():
         body = f'<g transform="translate(20 20)">{draw()}</g>'
-        (DOCS / f"{name}.svg").write_text(svg(LANE_W + 40, LANE_H + 22, body, f"ferry: {name}"))
+        (DOCS / f"{name}.svg").write_text(svg(LANE_W + 40, LANE_H + 22, body, f"bifrost: {name}"))
 
 
 if __name__ == "__main__":

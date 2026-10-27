@@ -1,10 +1,10 @@
-"""ferry: bring herdr saved machines to this computer's browser.
+"""bifrost: bring herdr saved machines to this computer's browser.
 
 Every port a machine listens on opens at http://<port>.<machine>.localhost.
 URLs and files the machine opens (remote-open.sh) open here, files served from
-the machine at http://files.<machine>.localhost. Run `ferry --help` for commands.
+the machine at http://files.<machine>.localhost. Run `bifrost --help` for commands.
 Stdlib only, so the plugin needs no build step on any device. Start it through
-the `ferry` launcher, which picks a Python new enough for `match`.
+the `bifrost` launcher, which picks a Python new enough for `match`.
 """
 
 import asyncio
@@ -38,11 +38,11 @@ import urllib.parse
 from dataclasses import dataclass
 from pathlib import Path
 
-PLUGIN_ID = "kujjwal02.ferry"
+PLUGIN_ID = "kujjwal02.bifrost"
 PLUGIN_ROOT = Path(__file__).resolve().parent
-REPOSITORY_URL = "https://github.com/kujjwal02/ferry"
+REPOSITORY_URL = "https://github.com/kujjwal02/bifrost"
 HERDR = os.environ.get("HERDR_BIN_PATH") or shutil.which("herdr") or "herdr"
-# Same defaults as herdr 0.9, so `ferry status` in a plain shell reads the files
+# Same defaults as herdr 0.9, so `bifrost status` in a plain shell reads the files
 # of the daemon that herdr started.
 XDG_STATE_HOME = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
 STATE_DIR = Path(os.environ.get("HERDR_PLUGIN_STATE_DIR", XDG_STATE_HOME / "herdr/plugins" / PLUGIN_ID))
@@ -90,13 +90,13 @@ LOOPBACK_PEERS = {"127.0.0.1", "::1", "::ffff:127.0.0.1"}
 # Hosts that mean "the machine itself" in a URL the machine asks to open.
 REMOTE_LOOPBACK_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0", "::1", "::"}
 # DNS rebinding cannot produce these Host values, so they are safe to answer.
-INDEX_HOSTS = {"localhost", "ferry.localhost", "127.0.0.1", "[::1]"}
+INDEX_HOSTS = {"localhost", "bifrost.localhost", "127.0.0.1", "[::1]"}
 ROUTE_HOST = re.compile(r"^(\d{1,5})\.([a-z0-9-]+)\.localhost$")
 FILES_HOST = re.compile(r"^files\.([a-z0-9-]+)\.localhost$")
 LISTENER_TOKEN = re.compile(r"^(\d{1,5})/([46])/([A-Za-z0-9._:-]{1,32})$")
 OPEN_REQUEST = re.compile(r"^(?:(?:https?|file)://[^\s\x00-\x1f\x7f-\x9f]+|/[^\x00-\x1f\x7f-\x9f]*)$")
 FILE_LINK_SIGNATURE = re.compile(r"^[0-9a-f]{24}$")
-# Opaque origin: a served page runs its scripts but cannot read other ferry
+# Opaque origin: a served page runs its scripts but cannot read other bifrost
 # pages, routes, or cookies, even though it loads from a *.localhost origin.
 FILE_PAGE_POLICY = "sandbox allow-scripts allow-forms allow-popups allow-modals allow-downloads"
 # Prints `ok SIZE` then the file, only for a regular file inside the folder the
@@ -109,13 +109,13 @@ case $file in "$folder"/*) ;; *) exit 5 ;; esac
 printf 'ok %s\\n' "$(stat -c %s -- "$file")"
 exec cat -- "$file"
 """
-# Both shims carry these lines, so ferry finds its own copies and never
+# Both shims carry these lines, so bifrost finds its own copies and never
 # overwrites or runs a file it did not write.
-REMOTE_OPENER_MARKER = "# ferry remote opener"
-CLI_SHIM_MARKER = "# ferry command shim"
-REMOTE_OPENER_DIR = "$HOME/.local/share/ferry/bin"
+REMOTE_OPENER_MARKER = "# bifrost remote opener"
+CLI_SHIM_MARKER = "# bifrost command shim"
+REMOTE_OPENER_DIR = "$HOME/.local/share/bifrost/bin"
 # Writes the remote opener from stdin. "refresh" only replaces a copy that
-# `ferry setup` installed, so connecting never installs anything by itself.
+# `bifrost setup` installed, so connecting never installs anything by itself.
 REMOTE_OPENER_INSTALL_SCRIPT = f"""
 set -e
 dir="{REMOTE_OPENER_DIR}"
@@ -125,8 +125,8 @@ cat > "$dir/.xdg-open.partial"
 chmod 755 "$dir/.xdg-open.partial"
 mv -f "$dir/.xdg-open.partial" "$dir/xdg-open"
 """
-SHELL_SETUP_BEGIN = "# >>> ferry >>>"
-SHELL_SETUP_END = "# <<< ferry <<<"
+SHELL_SETUP_BEGIN = "# >>> bifrost >>>"
+SHELL_SETUP_END = "# <<< bifrost <<<"
 # Adds or removes the PATH and BROWSER lines in the rc file of the login
 # shell. A symlinked rc file belongs to a dotfiles manager, so it is left alone.
 REMOTE_SHELL_SETUP_SCRIPT = f"""
@@ -137,12 +137,12 @@ case $(basename "${{SHELL:-sh}}") in
   *) rc="$HOME/.profile" ;;
 esac
 if [ "$1" = remove ]; then
-  rm -f "$HOME/.local/share/ferry/bin/xdg-open"
-  rmdir "$HOME/.local/share/ferry/bin" "$HOME/.local/share/ferry" 2>/dev/null || :
+  rm -f "$HOME/.local/share/bifrost/bin/xdg-open"
+  rmdir "$HOME/.local/share/bifrost/bin" "$HOME/.local/share/bifrost" 2>/dev/null || :
   if [ -L "$rc" ]; then echo "symlink $rc"; exit 0; fi
   if [ -f "$rc" ] && grep -qF '{SHELL_SETUP_BEGIN}' "$rc"; then
-    sed '/^{SHELL_SETUP_BEGIN}/,/^{SHELL_SETUP_END}/d' "$rc" > "$rc.ferry-partial"
-    cat "$rc.ferry-partial" > "$rc" && rm -f "$rc.ferry-partial"
+    sed '/^{SHELL_SETUP_BEGIN}/,/^{SHELL_SETUP_END}/d' "$rc" > "$rc.bifrost-partial"
+    cat "$rc.bifrost-partial" > "$rc" && rm -f "$rc.bifrost-partial"
     echo "removed $rc"
   fi
   exit 0
@@ -150,7 +150,7 @@ fi
 if [ -L "$rc" ]; then echo "symlink $rc"; exit 0; fi
 if [ -f "$rc" ] && grep -qF '{SHELL_SETUP_BEGIN}' "$rc"; then echo "present $rc"; exit 0; fi
 cat >> "$rc" <<'BLOCK'
-{SHELL_SETUP_BEGIN} added by `ferry setup`; `ferry setup --undo` removes it
+{SHELL_SETUP_BEGIN} added by `bifrost setup`; `bifrost setup --undo` removes it
 case ":$PATH:" in *":{REMOTE_OPENER_DIR}:"*) ;; *) export PATH="{REMOTE_OPENER_DIR}:$PATH" ;; esac
 export BROWSER="{REMOTE_OPENER_DIR}/xdg-open"
 {SHELL_SETUP_END}
@@ -160,7 +160,7 @@ echo "added $rc"
 REMOTE_FILE_MISSING_EXIT = 4
 REMOTE_FILE_OUTSIDE_EXIT = 5
 
-logger = logging.getLogger("ferry")
+logger = logging.getLogger("bifrost")
 
 
 def printable(text, limit=REMOTE_NAME_MAX_CHARS):
@@ -417,7 +417,7 @@ class RemoteMessageKind(enum.Enum):
 
 
 class ProtocolError(ValueError):
-    """watch.sh sent a line ferry does not accept. Remote input is untrusted."""
+    """watch.sh sent a line bifrost does not accept. Remote input is untrusted."""
 
 
 class Family(enum.Enum):
@@ -486,7 +486,7 @@ class Machine:
         # ones its previous thread is still cleaning up.
         instance = secrets.token_hex(2)
         digest = hashlib.sha256(f"{self.profile_id}\0{self.ssh_target}".encode()).hexdigest()[:10]
-        self.socket_prefix = f"ferry-{digest}-{instance}"
+        self.socket_prefix = f"bifrost-{digest}-{instance}"
         self.control_socket = SOCKET_DIR / self.socket_prefix
         host_tag = re.sub(r"[^A-Za-z0-9-]+", "-", socket.gethostname())[:20]
         self.watcher_id = f"{host_tag}-{instance}"
@@ -533,7 +533,7 @@ class Machine:
         self.state = ConnectionState.CONNECTING
         self.on_change()
         watch_script = (PLUGIN_ROOT / "watch.sh").read_text()
-        remote_command = f"sh -c {shlex.quote(watch_script)} ferry-watch {self.settings.min_port} {self.watcher_id}"
+        remote_command = f"sh -c {shlex.quote(watch_script)} bifrost-watch {self.settings.min_port} {self.watcher_id}"
         with self.ssh_lock:
             if self.is_stopping:
                 return "stopping"
@@ -616,7 +616,7 @@ class Machine:
         return None
 
     def refresh_remote_opener(self):
-        """Keep the machine's opener at this plugin version, if `ferry setup` installed one."""
+        """Keep the machine's opener at this plugin version, if `bifrost setup` installed one."""
         try:
             completed = install_remote_opener(self.control_socket, should_create=False)
         except subprocess.TimeoutExpired:
@@ -731,7 +731,7 @@ class Machine:
         if parts.scheme == "https":
             # The router reads a plaintext Host header, so it cannot route TLS.
             self.notifier.send(self.label, f"{self.label}: https page not opened",
-                               f"{request}: run `ferry forward {self.hostname}:{port}`, then open https://localhost:{port}", topic="open")
+                               f"{request}: run `bifrost forward {self.hostname}:{port}`, then open https://localhost:{port}", topic="open")
             return
         route_netloc = route_url(self.hostname, port, self.settings.router_port).removeprefix("http://")
         self.open_by_kind(OpenKind.REMOTE_PAGE, urllib.parse.urlunsplit(parts._replace(netloc=route_netloc)), request)
@@ -752,7 +752,7 @@ class Machine:
     async def read_file(self, folder, remote_path):
         """Start streaming one remote file over the master. Returns (size, process, error)."""
         fetch = await asyncio.create_subprocess_exec(
-            *self.ssh_command("_", f"sh -c {shlex.quote(REMOTE_FILE_SCRIPT)} ferry-file {shlex.quote(folder)} {shlex.quote(remote_path)}"),
+            *self.ssh_command("_", f"sh -c {shlex.quote(REMOTE_FILE_SCRIPT)} bifrost-file {shlex.quote(folder)} {shlex.quote(remote_path)}"),
             stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
         )
         try:
@@ -799,7 +799,7 @@ def master_ssh_command(control_socket, *remote_command):
 def install_remote_opener(control_socket, should_create):
     mode = "create" if should_create else "refresh"
     return subprocess.run(
-        master_ssh_command(control_socket, "_", f"sh -c {shlex.quote(REMOTE_OPENER_INSTALL_SCRIPT)} ferry-install {mode}"),
+        master_ssh_command(control_socket, "_", f"sh -c {shlex.quote(REMOTE_OPENER_INSTALL_SCRIPT)} bifrost-install {mode}"),
         input=(PLUGIN_ROOT / "remote-open.sh").read_text(), capture_output=True, text=True, timeout=COMMAND_TIMEOUT_S,
     )
 
@@ -905,7 +905,7 @@ class HostRouter:
             except OSError as error:
                 logger.warning("router: cannot listen on [%s]:%s: %s", address, self.settings.router_port, error)
         if not servers:
-            self.daemon.notifier.send("router", "ferry router is off", f"port {self.settings.router_port} is taken; set router_port in {CONFIG_FILE}")
+            self.daemon.notifier.send("router", "bifrost router is off", f"port {self.settings.router_port} is taken; set router_port in {CONFIG_FILE}")
             return
         logger.info("router: listening on port %s", self.settings.router_port)
         await asyncio.gather(*(server.serve_forever() for server in servers))
@@ -921,7 +921,7 @@ class HostRouter:
         except Exception:  # one malformed request must not stop the router
             logger.exception("router: request failed")
             try:
-                await respond(client_writer, "500 Internal Server Error", "ferry hit an error; see `ferry logs`.", "text/plain; charset=utf-8")
+                await respond(client_writer, "500 Internal Server Error", "bifrost hit an error; see `bifrost logs`.", "text/plain; charset=utf-8")
             except (ConnectionError, OSError):
                 pass
         finally:
@@ -946,7 +946,7 @@ class HostRouter:
         elif host.endswith(".localhost"):
             status_line = "404 Not Found"
             index_url = f"http://localhost{router_suffix(self.settings.router_port)}/"
-            await respond(client_writer, status_line, f"No ferry route for {html.escape(host)}. See {index_url}", "text/plain; charset=utf-8")
+            await respond(client_writer, status_line, f"No bifrost route for {html.escape(host)}. See {index_url}", "text/plain; charset=utf-8")
         else:
             # Any other Host means a DNS-rebinding page is asking; it gets nothing.
             status_line = "421 Misdirected Request"
@@ -1084,7 +1084,7 @@ class Daemon:
         body = "".join(sections) or '<p class="muted">No enabled saved machines. Add one with <code>herdr machine add</code>.</p>'
         return (
             '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width">'
-            '<meta http-equiv="refresh" content="5"><title>ferry</title><style>'
+            '<meta http-equiv="refresh" content="5"><title>bifrost</title><style>'
             ":root{color-scheme:light dark;--muted:#6c7086;--line:#8884;--accent:#1e66f5}"
             "@media(prefers-color-scheme:dark){:root{--accent:#89b4fa}}"
             "body{font:15px/1.5 system-ui,sans-serif;max-width:52rem;margin:3rem auto;padding:0 1.5rem}"
@@ -1094,7 +1094,7 @@ class Daemon:
             "td a,.port,code{font-family:ui-monospace,monospace}.port{width:4rem}"
             ".state{font-size:.75rem;font-weight:500;padding:.1rem .5rem;border-radius:1rem;background:#8882}"
             ".connected{color:#40a02b}.retrying{color:#df8e1d}.connecting{color:var(--muted)}"
-            f'</style><header><h1>ferry</h1><p>Ports on your herdr machines. <a href="{REPOSITORY_URL}">Docs</a></p></header>'
+            f'</style><header><h1>bifrost</h1><p>Ports on your herdr machines. <a href="{REPOSITORY_URL}">Docs</a></p></header>'
             f"{body}</html>"
         )
 
@@ -1205,7 +1205,7 @@ def running_daemon():
     except (OSError, ValueError):
         return None, ""
     command = subprocess.run(["ps", "-o", "command=", "-p", str(pid)], capture_output=True, text=True).stdout.strip()
-    return (pid, command) if "ferry.py daemon" in command else (None, "")
+    return (pid, command) if "bifrost.py daemon" in command else (None, "")
 
 
 def start():
@@ -1236,7 +1236,7 @@ def stop():
         if running_daemon_pid() is None:
             return True
         time.sleep(0.1)
-    print(f"ferry: daemon {pid} did not stop; see `ferry logs`", file=sys.stderr)
+    print(f"bifrost: daemon {pid} did not stop; see `bifrost logs`", file=sys.stderr)
     return False
 
 
@@ -1257,7 +1257,7 @@ def daemon():
     settings = Settings(**{**settings.__dict__, "router_port": effective_router_port(settings.router_port)})
     # A daemon killed hard leaves its forward sockets behind; holding the lock
     # means none of them belongs to a live daemon.
-    for leftover in SOCKET_DIR.glob("ferry-*"):
+    for leftover in SOCKET_DIR.glob("bifrost-*"):
         leftover.unlink(missing_ok=True)
     Daemon(settings).run()
 
@@ -1291,7 +1291,7 @@ def status(wait_for_key):
     style = Style(sys.stdout.isatty() and "NO_COLOR" not in os.environ)
     snapshot = read_status()
     if snapshot is None:
-        print(style.paint("ferry is not running.", "31") + " Start it with `ferry start`.")
+        print(style.paint("bifrost is not running.", "31") + " Start it with `bifrost start`.")
         crash_report = CRASH_LOG_FILE.read_text().strip() if CRASH_LOG_FILE.exists() else ""
         if crash_report:
             print(f"\nLast crash ({CRASH_LOG_FILE}):\n" + "\n".join(crash_report.splitlines()[-10:]))
@@ -1305,7 +1305,7 @@ def status(wait_for_key):
             for port in machine["ports"]:
                 print(f"  {style.paint(port['route_url'], '36'):<{36 + len(style.paint('', '36'))}} {style.paint(port['process_name'], '2')}")
             for port in machine["failed_ports"]:
-                print(f"  :{port:<35} {style.paint('forward failed, retrying; see `ferry logs`', '33')}")
+                print(f"  :{port:<35} {style.paint('forward failed, retrying; see `bifrost logs`', '33')}")
             if not machine["ports"] and not machine["failed_ports"]:
                 print(style.paint("  no ports listening", "2"))
     if wait_for_key:
@@ -1319,7 +1319,7 @@ def connected_machine(machine_name):
     """The status entry for a machine named by label or hostname, or exit with the valid names."""
     snapshot = read_status()
     if snapshot is None:
-        raise SystemExit("ferry is not running. Start it with `ferry start`.")
+        raise SystemExit("bifrost is not running. Start it with `bifrost start`.")
     names = {}
     for machine in snapshot["machines"]:
         names[machine["label"]] = names[machine["hostname"]] = machine
@@ -1327,7 +1327,7 @@ def connected_machine(machine_name):
         raise SystemExit(f"unknown machine {machine_name!r}; valid machines are {sorted(names)}")
     machine = names[machine_name]
     if machine["state"] != ConnectionState.CONNECTED.value:
-        raise SystemExit(f"{machine['label']} is {machine['state']}; see `ferry status`")
+        raise SystemExit(f"{machine['label']} is {machine['state']}; see `bifrost status`")
     return machine
 
 
@@ -1377,7 +1377,7 @@ def forward_same_port(target, should_cancel):
     if should_cancel:
         print(f"stopped localhost:{port}")
     else:
-        print(f"localhost:{port} now reaches {machine['label']}:{port} until the connection drops; `ferry forward --stop {target}` ends it")
+        print(f"localhost:{port} now reaches {machine['label']}:{port} until the connection drops; `bifrost forward --stop {target}` ends it")
 
 
 def confirm():
@@ -1439,10 +1439,10 @@ def show_logs(line_count, should_follow):
 
 
 def install_cli(bin_dir):
-    """Put a `ferry` command in bin_dir that runs this plugin, wherever herdr installed it."""
-    shim = bin_dir / "ferry"
+    """Put a `bifrost` command in bin_dir that runs this plugin, wherever herdr installed it."""
+    shim = bin_dir / "bifrost"
     if (shim.exists() or shim.is_symlink()) and not is_cli_shim(shim):
-        raise SystemExit(f"{shim} exists and is not ferry's shim; remove it or pass --bin-dir")
+        raise SystemExit(f"{shim} exists and is not bifrost's shim; remove it or pass --bin-dir")
     write_cli_shim(shim)
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     CLI_SHIM_RECORD_FILE.write_text(str(shim))
@@ -1456,7 +1456,7 @@ def refresh_cli_shim():
     if not CLI_SHIM_RECORD_FILE.exists():
         return
     shim = Path(CLI_SHIM_RECORD_FILE.read_text().strip())
-    if is_cli_shim(shim) and str(PLUGIN_ROOT / "ferry") not in shim.read_text():
+    if is_cli_shim(shim) and str(PLUGIN_ROOT / "bifrost") not in shim.read_text():
         write_cli_shim(shim)
 
 
@@ -1469,11 +1469,11 @@ def is_cli_shim(path):
 
 def write_cli_shim(shim):
     shim.parent.mkdir(parents=True, exist_ok=True)
-    partial = shim.with_name(".ferry.partial")
+    partial = shim.with_name(".bifrost.partial")
     partial.write_text(
-        f"#!/bin/sh\n{CLI_SHIM_MARKER}, written by `ferry install-cli`. herdr installs each plugin\n"
-        f"# update in a new folder; `ferry start` points this line at the current one.\n"
-        f"exec sh {shlex.quote(str(PLUGIN_ROOT / 'ferry'))} \"$@\"\n"
+        f"#!/bin/sh\n{CLI_SHIM_MARKER}, written by `bifrost install-cli`. herdr installs each plugin\n"
+        f"# update in a new folder; `bifrost start` points this line at the current one.\n"
+        f"exec sh {shlex.quote(str(PLUGIN_ROOT / 'bifrost'))} \"$@\"\n"
     )
     partial.chmod(0o755)
     partial.replace(shim)
@@ -1489,7 +1489,7 @@ def set_up_machine(machine_name, should_undo):
             raise SystemExit(f"{machine['label']}: installing the opener failed: {installed.stderr.strip()}")
     operation = "remove" if should_undo else "add"
     shell_setup = subprocess.run(
-        master_ssh_command(control_socket, "_", f"sh -c {shlex.quote(REMOTE_SHELL_SETUP_SCRIPT)} ferry-setup {operation}"),
+        master_ssh_command(control_socket, "_", f"sh -c {shlex.quote(REMOTE_SHELL_SETUP_SCRIPT)} bifrost-setup {operation}"),
         capture_output=True, text=True, timeout=COMMAND_TIMEOUT_S,
     )
     if shell_setup.returncode != 0:
@@ -1498,16 +1498,16 @@ def set_up_machine(machine_name, should_undo):
     label = machine["label"]
     if should_undo:
         if outcome == "symlink":
-            print(f"{label}: {rc_file} is a symlink, so ferry left it alone; remove the PATH and BROWSER lines yourself")
+            print(f"{label}: {rc_file} is a symlink, so bifrost left it alone; remove the PATH and BROWSER lines yourself")
         elif outcome == "removed":
-            print(f"{label}: removed the ferry lines from {rc_file}")
-        print(f"{label}: removed the opener from ~/.local/share/ferry/bin")
+            print(f"{label}: removed the bifrost lines from {rc_file}")
+        print(f"{label}: removed the opener from ~/.local/share/bifrost/bin")
         return
-    print(f"{label}: installed the opener as ~/.local/share/ferry/bin/xdg-open")
+    print(f"{label}: installed the opener as ~/.local/share/bifrost/bin/xdg-open")
     if outcome == "symlink":
-        print(f"{label}: {rc_file} is a symlink, so ferry left it alone. Add these lines where you manage it:\n"
-              f'  export PATH="$HOME/.local/share/ferry/bin:$PATH"\n'
-              f'  export BROWSER="$HOME/.local/share/ferry/bin/xdg-open"')
+        print(f"{label}: {rc_file} is a symlink, so bifrost left it alone. Add these lines where you manage it:\n"
+              f'  export PATH="$HOME/.local/share/bifrost/bin:$PATH"\n'
+              f'  export BROWSER="$HOME/.local/share/bifrost/bin/xdg-open"')
         return
     print(f"{label}: {'PATH and BROWSER already set in' if outcome == 'present' else 'set PATH and BROWSER in'} {rc_file}")
     print(f"{label}: restart the shells (and agents) there; then `xdg-open https://example.com` on {label} asks here")
@@ -1542,28 +1542,28 @@ def show():
 
 
 OVERVIEW = """\
-ferry brings herdr saved machines to this computer's browser.
+bifrost brings herdr saved machines to this computer's browser.
 
   ports   Every port a machine listens on opens at
             http://<port>.<machine>.localhost
-          `ferry forward` adds a same-port localhost:<port> when a tool insists.
+          `bifrost forward` adds a same-port localhost:<port> when a tool insists.
   URLs    A page the machine opens (xdg-open, $BROWSER) opens here: its own
           pages and files at once, any other page after a yes in a popup.
-  files   A file opened on the machine, or with `ferry open`, is served at
+  files   A file opened on the machine, or with `bifrost open`, is served at
             http://files.<machine>.localhost/...
 
 <machine> is the herdr machine label: `herdr machine rename <id> --label afk`.
-The daemon starts with herdr. `ferry setup <machine>` once per machine makes
+The daemon starts with herdr. `bifrost setup <machine>` once per machine makes
 the URLs its agents open come here.
 """
 
 EPILOG = f"""\
 examples:
-  ferry status                          list machines, ports and their URLs
-  ferry setup afk                       send the URLs afk opens to this browser
-  ferry open afk:~/project/report.html  open a remote file in this browser
-  ferry forward afk:1455                localhost:1455 here reaches afk:1455
-  ferry logs -f                         follow the daemon log
+  bifrost status                          list machines, ports and their URLs
+  bifrost setup afk                       send the URLs afk opens to this browser
+  bifrost open afk:~/project/report.html  open a remote file in this browser
+  bifrost forward afk:1455                localhost:1455 here reaches afk:1455
+  bifrost logs -f                         follow the daemon log
 
 files:
   config  {CONFIG_FILE}
@@ -1576,15 +1576,15 @@ files:
 def command_line():
     import argparse
 
-    parser = argparse.ArgumentParser(prog="ferry", description=OVERVIEW, epilog=EPILOG, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--version", action="version", version=f"ferry {plugin_version()}")
+    parser = argparse.ArgumentParser(prog="bifrost", description=OVERVIEW, epilog=EPILOG, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--version", action="version", version=f"bifrost {plugin_version()}")
     commands = parser.add_subparsers(title="commands", dest="command", metavar="<command>")
     status_command = commands.add_parser("status", help="list machines, routed ports and their URLs")
     status_command.add_argument("--wait", action="store_true", help="wait for Enter before exiting (for the herdr popup)")
     open_command = commands.add_parser(
         "open", help="open a remote file in this computer's browser",
         description="Open a file from a machine in this computer's browser. Relative links in the page load too.",
-        epilog="examples:\n  ferry open afk:~/project/report.html\n  ferry open afk:/srv/site/index.html",
+        epilog="examples:\n  bifrost open afk:~/project/report.html\n  bifrost open afk:/srv/site/index.html",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     open_command.add_argument("target", metavar="<machine>:<path>", help="machine label, a colon, then a path on that machine; ~/ is its home")
@@ -1597,10 +1597,10 @@ def command_line():
     forward_command.add_argument("--stop", action="store_true", help="remove the forward instead")
     setup_command = commands.add_parser(
         "setup", help="make the URLs a machine's agents open come to this browser",
-        description="Install the ferry opener on a machine as ~/.local/share/ferry/bin/xdg-open, and set PATH and "
+        description="Install the bifrost opener on a machine as ~/.local/share/bifrost/bin/xdg-open, and set PATH and "
                     "BROWSER in the rc file of its login shell (~/.zshenv, ~/.bashrc or ~/.profile). Run once per "
                     "machine; the daemon keeps the opener up to date.",
-        epilog="examples:\n  ferry setup afk\n  ferry setup --undo afk",
+        epilog="examples:\n  bifrost setup afk\n  bifrost setup --undo afk",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     setup_command.add_argument("machine", metavar="<machine>", help="machine label")
@@ -1610,8 +1610,8 @@ def command_line():
     )
     open_link_command.add_argument("url", nargs="?", default=os.environ.get("HERDR_PLUGIN_CLICKED_URL"), help="defaults to $HERDR_PLUGIN_CLICKED_URL")
     install_cli_command = commands.add_parser(
-        "install-cli", help="put a `ferry` command on PATH",
-        description="Write a small `ferry` script that runs this plugin. It follows `herdr plugin update`.",
+        "install-cli", help="put a `bifrost` command on PATH",
+        description="Write a small `bifrost` script that runs this plugin. It follows `herdr plugin update`.",
     )
     install_cli_command.add_argument("--bin-dir", type=Path, default=Path.home() / ".local/bin", help="where to put it (default ~/.local/bin)")
     logs_command = commands.add_parser("logs", help="show the daemon log")
@@ -1620,7 +1620,7 @@ def command_line():
     commands.add_parser("restart", help="stop the daemon and start it again, reconnecting every machine")
     commands.add_parser("start", help="start the daemon unless it runs (herdr does this at startup)")
     commands.add_parser("stop", help="stop the daemon; every route closes")
-    commands.add_parser("show", help="open the status popup in herdr (the Ferry: status action)")
+    commands.add_parser("show", help="open the status popup in herdr (the Bifrost: status action)")
     commands.add_parser("confirm", help="ask about pending pages (the popup herdr opens)")
     commands.add_parser("daemon", help="run the daemon in the foreground (start runs this in the background)")
     return parser

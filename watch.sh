@@ -1,5 +1,5 @@
-# Runs on the saved machine as `sh -c <this script> ferry-watch MIN_PORT WATCHER_ID`.
-# The ferry daemon writes "tick SELECTED" on stdin once a second. Each tick
+# Runs on the saved machine as `sh -c <this script> bifrost-watch MIN_PORT WATCHER_ID`.
+# The bifrost daemon writes "tick SELECTED" on stdin once a second. Each tick
 # rescans the listeners and the open queue, so this loop stops as soon as the
 # daemon's connection does. Output lines:
 #   ports PORT/FAMILY/PROCESS_NAME ...   the listener set changed
@@ -10,7 +10,7 @@ min_port=$1
 watcher_id=$2
 [ -r /proc/net/tcp ] || { echo "fatal needs Linux with /proc/net/tcp"; exit 1; }
 umask 077
-spool="$HOME/.cache/ferry"
+spool="$HOME/.cache/bifrost"
 mkdir -p "$spool" && chmod 700 "$spool"
 uid=$(id -u)
 listener_tables=/proc/net/tcp

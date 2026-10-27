@@ -1,17 +1,17 @@
 #!/bin/sh
-# ferry remote opener
-# `ferry setup` installs this on a machine as ~/.local/share/ferry/bin/xdg-open
-# and names it in $BROWSER. While ferry on a computer watches the machine, its
+# bifrost remote opener
+# `bifrost setup` installs this on a machine as ~/.local/share/bifrost/bin/xdg-open
+# and names it in $BROWSER. While bifrost on a computer watches the machine, its
 # watch.sh refreshes a heartbeat file every second. An http(s) URL or a file
 # then goes to that computer and opens in its browser. Other schemes, a path
 # that is not a file, or no watcher fall through to the real xdg-open.
-spool="$HOME/.cache/ferry"
+spool="$HOME/.cache/bifrost"
 heartbeat_max_age_s=3
 
 open_request=
 if [ $# -eq 1 ]; then
   case $1 in
-    http://*|https://*|file://*) open_request=$1 ;;  # ferry decodes file:// itself; dash cannot
+    http://*|https://*|file://*) open_request=$1 ;;  # bifrost decodes file:// itself; dash cannot
     *) [ -f "$1" ] && open_request=$(readlink -f "$1") ;;
   esac
 fi

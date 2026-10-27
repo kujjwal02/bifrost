@@ -1,18 +1,18 @@
-# How ferry works
+# How bifrost works
 
-ferry runs as one daemon on your computer. It holds one SSH connection to each enabled herdr saved machine,
+bifrost runs as one daemon on your computer. It holds one SSH connection to each enabled herdr saved machine,
 and the connection carries everything else: listener reports, port forwards, open requests and file reads.
 Nothing on the remote listens on a network port. The remote needs a POSIX shell and coreutils, plus `ss`
 for process names.
 
 ## Pieces
 
-![ferry architecture: one SSH master per machine carries port forwards, file reads and the watch protocol](architecture.svg)
+![bifrost architecture: one SSH master per machine carries port forwards, file reads and the watch protocol](architecture.svg)
 
 | Piece | Runs on | Job |
 | --- | --- | --- |
-| `ferry` | your computer | sh launcher; finds Python 3.10 or newer and runs `ferry.py` |
-| `ferry.py daemon` | your computer, one per user (flock) | follows `herdr machine list`, runs one `Machine` thread per enabled machine, hosts the router |
+| `bifrost` | your computer | sh launcher; finds Python 3.10 or newer and runs `bifrost.py` |
+| `bifrost.py daemon` | your computer, one per user (flock) | follows `herdr machine list`, runs one `Machine` thread per enabled machine, hosts the router |
 | router | inside the daemon, port 80 | matches the `Host` header to a route, then copies raw bytes both ways |
 | `watch.sh` | each machine, as `sh -c` over SSH | reports listeners and queued open requests once a second |
 | `remote-open.sh` | each machine, as `xdg-open` and `$BROWSER` | queues a URL or file while a computer watches, else runs the real `xdg-open` |
@@ -72,12 +72,12 @@ sequenceDiagram
   autonumber
   participant S as dev server (afk)
   participant W as watch.sh
-  participant D as ferry daemon
+  participant D as bifrost daemon
   participant B as browser
   participant R as router
   S->>S: listen on localhost:5173
   W->>D: ports 5173/4/node
-  D->>D: ssh -O forward -L ~/.ssh/sockets/ferry-…-5173:127.0.0.1:5173
+  D->>D: ssh -O forward -L ~/.ssh/sockets/bifrost-…-5173:127.0.0.1:5173
   D-->>B: herdr notification "afk: 1 new port"
   B->>R: GET / with Host: 5173.afk.localhost
   R->>R: 5173.afk → that socket
@@ -93,7 +93,7 @@ The router reads the request head only up to the blank line, picks the route fro
 bytes without parsing them. WebSockets and server-sent events pass through unchanged. A forward that
 fails is retried every 5 s. A listener that moves from IPv4 to IPv6 gets a new forward.
 
-`ferry forward afk:1455` adds a TCP forward on `127.0.0.1:1455` through the same master, for tools that
+`bifrost forward afk:1455` adds a TCP forward on `127.0.0.1:1455` through the same master, for tools that
 insist on `localhost:<port>`.
 
 ## Opening what the remote opens
@@ -118,7 +118,7 @@ flowchart TD
   class open go
 ```
 
-The opener on the remote writes each request to `~/.cache/ferry/open.<pid>.<time>` (mode 0600, via a
+The opener on the remote writes each request to `~/.cache/bifrost/open.<pid>.<time>` (mode 0600, via a
 `.partial` file and `mv`). It does so only while a `watching.*` heartbeat file is under 3 s old; otherwise
 it runs the system `xdg-open`. `watch.sh` claims a request with `mv`, so when two computers watch the
 same machine, exactly one opens it. A computer whose herdr does not show that machine waits 2 s before it
@@ -159,7 +159,7 @@ daemon's memory.
 ```mermaid
 %%{init: {"theme": "base", "themeVariables": {"fontFamily": "ui-sans-serif, system-ui, sans-serif", "fontSize": "15px", "primaryColor": "#eff1f5", "primaryBorderColor": "#8839ef", "primaryTextColor": "#4c4f69", "lineColor": "#7c7f93", "secondaryColor": "#e6e9ef", "tertiaryColor": "#f5f5fa", "edgeLabelBackground": "#ffffff", "actorBkg": "#eff1f5", "actorBorder": "#8839ef", "actorTextColor": "#4c4f69", "signalColor": "#5c5f77", "signalTextColor": "#4c4f69", "sequenceNumberColor": "#ffffff", "labelBoxBkgColor": "#eff1f5"}}}%%
 flowchart TD
-  startup["herdr startup hook"] --> start["ferry start"]
+  startup["herdr startup hook"] --> start["bifrost start"]
   focus["workspace.focused hook"] --> start
   start --> running{"daemon running<br/>from this plugin folder ?"}
   running -- yes --> done["no-op"]
@@ -168,11 +168,11 @@ flowchart TD
   launch -- "herdr gone for<br/>3 checks" --> exit["exit; remote watchers<br/>end within 1 s"]
 ```
 
-herdr does not supervise plugin processes, so ferry supervises itself:
+herdr does not supervise plugin processes, so bifrost supervises itself:
 
-- **Crash:** the next workspace switch runs `ferry start`, which finds no live daemon and launches one.
+- **Crash:** the next workspace switch runs `bifrost start`, which finds no live daemon and launches one.
 - **Update:** `herdr plugin update` installs into a new folder. The next hook run sees a daemon from the
-  old folder and replaces it. It also repoints the `ferry` shim from `ferry install-cli`.
+  old folder and replaces it. It also repoints the `bifrost` shim from `bifrost install-cli`.
 - **herdr exits:** the daemon exits after three failed checks of the herdr socket.
 - **Errors:** an error in one connection, open request or router request is logged, and only that piece
   retries.
@@ -188,18 +188,18 @@ flowchart LR
   lan["device on your network"] -. "closed: not loopback" .-x router["router"]
   rebind["DNS-rebinding page"] -. "421: bad Host" .-x router
   forged["guessed file link"] -. "403: bad HMAC" .-x router
-  page["served remote page"] -. "sandboxed origin" .-x other["other ferry pages"]
+  page["served remote page"] -. "sandboxed origin" .-x other["other bifrost pages"]
   agent["prompt-injected agent"] -. "needs your yes" .-x browser["your browser"]
 ```
 
-[SECURITY.md](../SECURITY.md) lists each threat, its defence, and what ferry does not defend against.
+[SECURITY.md](../SECURITY.md) lists each threat, its defence, and what bifrost does not defend against.
 
 ## Platforms
 
 | This computer | Opens pages with | Router listens on |
 | --- | --- | --- |
 | macOS | `open` | port 80 on all addresses, because macOS lets a normal user bind a low port only there; non-loopback peers are closed unread |
-| Linux | the system `xdg-open`, skipping the ferry opener | loopback, port 80 if `net.ipv4.ip_unprivileged_port_start` allows it, else 8080 (logged with the `sysctl` fix) |
+| Linux | the system `xdg-open`, skipping the bifrost opener | loopback, port 80 if `net.ipv4.ip_unprivileged_port_start` allows it, else 8080 (logged with the `sysctl` fix) |
 | WSL (experimental) | `wslview`, else `explorer.exe`, so pages open in the Windows browser | as Linux |
 
 On Linux, `curl` and other non-browser tools may need `--resolve` or an `/etc/hosts` line for
@@ -211,8 +211,8 @@ address, which then goes in `trusted_peers`.
 
 | Path | Holds |
 | --- | --- |
-| `~/.config/herdr/plugins/config/kujjwal02.ferry/config.json` | optional settings |
-| `~/.local/state/herdr/plugins/kujjwal02.ferry/` | `daemon.log`, `crash.log`, `status.json`, `daemon.pid`, `file-link.key`, `pending-opens.json` |
-| `~/.ssh/sockets/ferry-*` | control sockets and per-port forwards |
-| remote `~/.cache/ferry/` | heartbeats and the open queue, mode 0700 |
-| remote `~/.local/share/ferry/bin/xdg-open` | the opener, from `ferry setup` |
+| `~/.config/herdr/plugins/config/kujjwal02.bifrost/config.json` | optional settings |
+| `~/.local/state/herdr/plugins/kujjwal02.bifrost/` | `daemon.log`, `crash.log`, `status.json`, `daemon.pid`, `file-link.key`, `pending-opens.json` |
+| `~/.ssh/sockets/bifrost-*` | control sockets and per-port forwards |
+| remote `~/.cache/bifrost/` | heartbeats and the open queue, mode 0700 |
+| remote `~/.local/share/bifrost/bin/xdg-open` | the opener, from `bifrost setup` |

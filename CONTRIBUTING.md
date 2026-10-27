@@ -1,6 +1,6 @@
 # Contributing
 
-ferry uses Python 3.10 or newer and POSIX shell scripts. Runtime dependencies
+bifrost uses Python 3.10 or newer and POSIX shell scripts. Runtime dependencies
 come from the Python standard library.
 
 Run the checks from the repository root:
@@ -8,7 +8,7 @@ Run the checks from the repository root:
 ```sh
 python3 -W error::ResourceWarning -m unittest discover -s tests -v
 uvx ruff check .
-shellcheck -s sh ferry watch.sh remote-open.sh
+shellcheck -s sh bifrost watch.sh remote-open.sh
 ```
 
 Linux runs the remote script tests. macOS runs the other tests. CI covers
