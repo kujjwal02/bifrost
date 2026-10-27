@@ -164,9 +164,8 @@ flowchart TD
   start --> running{"daemon running<br/>from this plugin folder ?"}
   running -- yes --> done["no-op"]
   running -- "other folder<br/>(after plugin update)" --> stop["stop old daemon"] --> launch
-  running -- no --> launch["launch daemon<br/>flock, pid file"]
-  launch --> clean["remove leftover<br/>ferry-* sockets"] --> loop["poll herdr every 2 s"]
-  loop -- "herdr socket gone<br/>3 checks in a row" --> exit["exit; remote watchers<br/>end within 1 s"]
+  running -- no --> launch["launch: take the lock,<br/>clear leftover sockets,<br/>poll herdr every 2 s"]
+  launch -- "herdr gone for<br/>3 checks" --> exit["exit; remote watchers<br/>end within 1 s"]
 ```
 
 herdr does not supervise plugin processes, so ferry supervises itself:
@@ -186,12 +185,11 @@ as a hard Python crash, and is cleared on every start.
 ```mermaid
 %%{init: {"theme": "base", "themeVariables": {"fontFamily": "ui-sans-serif, system-ui, sans-serif", "fontSize": "15px", "primaryColor": "#eff1f5", "primaryBorderColor": "#8839ef", "primaryTextColor": "#4c4f69", "lineColor": "#7c7f93", "secondaryColor": "#e6e9ef", "tertiaryColor": "#f5f5fa", "edgeLabelBackground": "#ffffff", "actorBkg": "#eff1f5", "actorBorder": "#8839ef", "actorTextColor": "#4c4f69", "signalColor": "#5c5f77", "signalTextColor": "#4c4f69", "sequenceNumberColor": "#ffffff", "labelBoxBkgColor": "#eff1f5"}}}%%
 flowchart LR
-  lan["device on your network"] -. "refused: not loopback" .-x router
-  rebind["DNS-rebinding page"] -. "421: Host not *.localhost" .-x router
-  page["served remote page"] -. "CSP sandbox: opaque origin" .-x other["other ferry pages"]
-  agent["prompt-injected agent"] -. "outside page needs a yes" .-x browser["your browser"]
-  forged["guessed file link"] -. "403: HMAC mismatch" .-x router
-  router["router"]
+  lan["device on your network"] -. "closed: not loopback" .-x router["router"]
+  rebind["DNS-rebinding page"] -. "421: bad Host" .-x router
+  forged["guessed file link"] -. "403: bad HMAC" .-x router
+  page["served remote page"] -. "sandboxed origin" .-x other["other ferry pages"]
+  agent["prompt-injected agent"] -. "needs your yes" .-x browser["your browser"]
 ```
 
 [SECURITY.md](../SECURITY.md) lists each threat, its defence, and what ferry does not defend against.
