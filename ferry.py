@@ -408,7 +408,6 @@ class ConnectionState(enum.Enum):
     CONNECTING = "connecting"
     CONNECTED = "connected"
     RETRYING = "retrying"
-    HOSTNAME_CLASH = "hostname clash"
 
 
 class RemoteMessageKind(enum.Enum):
