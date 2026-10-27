@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.0
+
+- `bifrost bind <machine>` and `bifrost unbind <machine>` replace `bifrost setup` and `bifrost setup --undo`.
+
 ## 2.0.0
 
 Renamed from ferry to bifrost, because two herdr plugins already use the name ferry. Everything that

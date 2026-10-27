@@ -1,6 +1,6 @@
 #!/bin/sh
 # bifrost remote opener
-# `bifrost setup` installs this on a machine as ~/.local/share/bifrost/bin/xdg-open
+# `bifrost bind` installs this on a machine as ~/.local/share/bifrost/bin/xdg-open
 # and names it in $BROWSER. While bifrost on a computer watches the machine, its
 # watch.sh refreshes a heartbeat file every second. An http(s) URL or a file
 # then goes to that computer and opens in its browser. Other schemes, a path

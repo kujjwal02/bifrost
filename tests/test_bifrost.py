@@ -207,31 +207,31 @@ class ShimTest(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.home)
 
-    def run_shell_setup(self, operation, login_shell="/bin/bash"):
+    def run_shell_binding(self, operation, login_shell="/bin/bash"):
         return subprocess.run(
-            ["sh", "-c", bifrost.REMOTE_SHELL_SETUP_SCRIPT, "bifrost-setup", operation],
+            ["sh", "-c", bifrost.REMOTE_SHELL_BINDING_SCRIPT, "bifrost-bind", operation],
             env={"HOME": str(self.home), "SHELL": login_shell, "PATH": os.environ["PATH"]},
             capture_output=True, text=True, check=True,
         ).stdout.strip()
 
-    def test_shell_setup_adds_once_and_removes(self):
+    def test_shell_binding_adds_once_and_removes(self):
         bashrc = self.home / ".bashrc"
         bashrc.write_text("alias ll='ls -l'\n")
-        self.assertEqual(self.run_shell_setup("add"), f"added {bashrc}")
-        self.assertEqual(self.run_shell_setup("add"), f"present {bashrc}")
+        self.assertEqual(self.run_shell_binding("add"), f"added {bashrc}")
+        self.assertEqual(self.run_shell_binding("add"), f"present {bashrc}")
         self.assertIn('export BROWSER="$HOME/.local/share/bifrost/bin/xdg-open"', bashrc.read_text())
-        self.assertEqual(self.run_shell_setup("remove"), f"removed {bashrc}")
+        self.assertEqual(self.run_shell_binding("remove"), f"removed {bashrc}")
         self.assertEqual(bashrc.read_text(), "alias ll='ls -l'\n")
 
-    def test_shell_setup_picks_rc_by_login_shell(self):
-        self.assertEqual(self.run_shell_setup("add", "/usr/bin/zsh"), f"added {self.home / '.zshenv'}")
-        self.assertEqual(self.run_shell_setup("add", "/bin/dash"), f"added {self.home / '.profile'}")
+    def test_shell_binding_picks_rc_by_login_shell(self):
+        self.assertEqual(self.run_shell_binding("add", "/usr/bin/zsh"), f"added {self.home / '.zshenv'}")
+        self.assertEqual(self.run_shell_binding("add", "/bin/dash"), f"added {self.home / '.profile'}")
 
-    def test_shell_setup_leaves_symlinked_rc_alone(self):
+    def test_shell_binding_leaves_symlinked_rc_alone(self):
         target = self.home / "dotfiles-bashrc"
         target.write_text("")
         (self.home / ".bashrc").symlink_to(target)
-        self.assertEqual(self.run_shell_setup("add"), f"symlink {self.home / '.bashrc'}")
+        self.assertEqual(self.run_shell_binding("add"), f"symlink {self.home / '.bashrc'}")
         self.assertEqual(target.read_text(), "")
 
     def test_opener_refresh_never_installs(self):

@@ -1,6 +1,6 @@
 id = "kujjwal02.bifrost"
 name = "bifrost"
-version = "2.0.0"
+version = "2.1.0"
 min_herdr_version = "0.9.0"
 description = "Open your remote machines' ports, links and files in this computer's browser at http://<port>.<machine>.localhost"
 platforms = ["macos", "linux"]

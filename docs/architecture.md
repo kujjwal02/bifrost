@@ -215,4 +215,4 @@ address, which then goes in `trusted_peers`.
 | `~/.local/state/herdr/plugins/kujjwal02.bifrost/` | `daemon.log`, `crash.log`, `status.json`, `daemon.pid`, `file-link.key`, `pending-opens.json` |
 | `~/.ssh/sockets/bifrost-*` | control sockets and per-port forwards |
 | remote `~/.cache/bifrost/` | heartbeats and the open queue, mode 0700 |
-| remote `~/.local/share/bifrost/bin/xdg-open` | the opener, from `bifrost setup` |
+| remote `~/.local/share/bifrost/bin/xdg-open` | the opener, from `bifrost bind` |

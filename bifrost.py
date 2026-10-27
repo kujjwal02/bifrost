@@ -115,7 +115,7 @@ REMOTE_OPENER_MARKER = "# bifrost remote opener"
 CLI_SHIM_MARKER = "# bifrost command shim"
 REMOTE_OPENER_DIR = "$HOME/.local/share/bifrost/bin"
 # Writes the remote opener from stdin. "refresh" only replaces a copy that
-# `bifrost setup` installed, so connecting never installs anything by itself.
+# `bifrost bind` installed, so connecting never installs anything by itself.
 REMOTE_OPENER_INSTALL_SCRIPT = f"""
 set -e
 dir="{REMOTE_OPENER_DIR}"
@@ -125,11 +125,11 @@ cat > "$dir/.xdg-open.partial"
 chmod 755 "$dir/.xdg-open.partial"
 mv -f "$dir/.xdg-open.partial" "$dir/xdg-open"
 """
-SHELL_SETUP_BEGIN = "# >>> bifrost >>>"
-SHELL_SETUP_END = "# <<< bifrost <<<"
+SHELL_BLOCK_BEGIN = "# >>> bifrost >>>"
+SHELL_BLOCK_END = "# <<< bifrost <<<"
 # Adds or removes the PATH and BROWSER lines in the rc file of the login
 # shell. A symlinked rc file belongs to a dotfiles manager, so it is left alone.
-REMOTE_SHELL_SETUP_SCRIPT = f"""
+REMOTE_SHELL_BINDING_SCRIPT = f"""
 set -e
 case $(basename "${{SHELL:-sh}}") in
   zsh) rc="$HOME/.zshenv" ;;
@@ -140,20 +140,20 @@ if [ "$1" = remove ]; then
   rm -f "$HOME/.local/share/bifrost/bin/xdg-open"
   rmdir "$HOME/.local/share/bifrost/bin" "$HOME/.local/share/bifrost" 2>/dev/null || :
   if [ -L "$rc" ]; then echo "symlink $rc"; exit 0; fi
-  if [ -f "$rc" ] && grep -qF '{SHELL_SETUP_BEGIN}' "$rc"; then
-    sed '/^{SHELL_SETUP_BEGIN}/,/^{SHELL_SETUP_END}/d' "$rc" > "$rc.bifrost-partial"
+  if [ -f "$rc" ] && grep -qF '{SHELL_BLOCK_BEGIN}' "$rc"; then
+    sed '/^{SHELL_BLOCK_BEGIN}/,/^{SHELL_BLOCK_END}/d' "$rc" > "$rc.bifrost-partial"
     cat "$rc.bifrost-partial" > "$rc" && rm -f "$rc.bifrost-partial"
     echo "removed $rc"
   fi
   exit 0
 fi
 if [ -L "$rc" ]; then echo "symlink $rc"; exit 0; fi
-if [ -f "$rc" ] && grep -qF '{SHELL_SETUP_BEGIN}' "$rc"; then echo "present $rc"; exit 0; fi
+if [ -f "$rc" ] && grep -qF '{SHELL_BLOCK_BEGIN}' "$rc"; then echo "present $rc"; exit 0; fi
 cat >> "$rc" <<'BLOCK'
-{SHELL_SETUP_BEGIN} added by `bifrost setup`; `bifrost setup --undo` removes it
+{SHELL_BLOCK_BEGIN} added by `bifrost bind`; `bifrost unbind` removes it
 case ":$PATH:" in *":{REMOTE_OPENER_DIR}:"*) ;; *) export PATH="{REMOTE_OPENER_DIR}:$PATH" ;; esac
 export BROWSER="{REMOTE_OPENER_DIR}/xdg-open"
-{SHELL_SETUP_END}
+{SHELL_BLOCK_END}
 BLOCK
 echo "added $rc"
 """
@@ -616,7 +616,7 @@ class Machine:
         return None
 
     def refresh_remote_opener(self):
-        """Keep the machine's opener at this plugin version, if `bifrost setup` installed one."""
+        """Keep the machine's opener at this plugin version, if `bifrost bind` installed one."""
         try:
             completed = install_remote_opener(self.control_socket, should_create=False)
         except subprocess.TimeoutExpired:
@@ -1479,30 +1479,14 @@ def write_cli_shim(shim):
     partial.replace(shim)
 
 
-def set_up_machine(machine_name, should_undo):
-    """Install or remove the opener on a machine, so the URLs its agents open come here."""
+def bind_machine(machine_name):
+    """Install the opener on a machine, so the URLs its agents open come here."""
     machine = connected_machine(machine_name)
-    control_socket = machine["control_socket"]
-    if not should_undo:
-        installed = install_remote_opener(control_socket, should_create=True)
-        if installed.returncode != 0:
-            raise SystemExit(f"{machine['label']}: installing the opener failed: {installed.stderr.strip()}")
-    operation = "remove" if should_undo else "add"
-    shell_setup = subprocess.run(
-        master_ssh_command(control_socket, "_", f"sh -c {shlex.quote(REMOTE_SHELL_SETUP_SCRIPT)} bifrost-setup {operation}"),
-        capture_output=True, text=True, timeout=COMMAND_TIMEOUT_S,
-    )
-    if shell_setup.returncode != 0:
-        raise SystemExit(f"{machine['label']}: editing the shell rc file failed: {shell_setup.stderr.strip()}")
-    outcome, _, rc_file = shell_setup.stdout.strip().partition(" ")
     label = machine["label"]
-    if should_undo:
-        if outcome == "symlink":
-            print(f"{label}: {rc_file} is a symlink, so bifrost left it alone; remove the PATH and BROWSER lines yourself")
-        elif outcome == "removed":
-            print(f"{label}: removed the bifrost lines from {rc_file}")
-        print(f"{label}: removed the opener from ~/.local/share/bifrost/bin")
-        return
+    installed = install_remote_opener(machine["control_socket"], should_create=True)
+    if installed.returncode != 0:
+        raise SystemExit(f"{label}: installing the opener failed: {installed.stderr.strip()}")
+    outcome, rc_file = edit_remote_shell_rc(machine, "add")
     print(f"{label}: installed the opener as ~/.local/share/bifrost/bin/xdg-open")
     if outcome == "symlink":
         print(f"{label}: {rc_file} is a symlink, so bifrost left it alone. Add these lines where you manage it:\n"
@@ -1511,6 +1495,30 @@ def set_up_machine(machine_name, should_undo):
         return
     print(f"{label}: {'PATH and BROWSER already set in' if outcome == 'present' else 'set PATH and BROWSER in'} {rc_file}")
     print(f"{label}: restart the shells (and agents) there; then `xdg-open https://example.com` on {label} asks here")
+
+
+def unbind_machine(machine_name):
+    """Remove the opener and the rc file lines that `bifrost bind` added."""
+    machine = connected_machine(machine_name)
+    label = machine["label"]
+    outcome, rc_file = edit_remote_shell_rc(machine, "remove")
+    if outcome == "symlink":
+        print(f"{label}: {rc_file} is a symlink, so bifrost left it alone; remove the PATH and BROWSER lines yourself")
+    elif outcome == "removed":
+        print(f"{label}: removed the bifrost lines from {rc_file}")
+    print(f"{label}: removed the opener from ~/.local/share/bifrost/bin")
+
+
+def edit_remote_shell_rc(machine, operation):
+    """Run the rc file script on a machine. Returns (outcome, rc file path)."""
+    edited = subprocess.run(
+        master_ssh_command(machine["control_socket"], "_", f"sh -c {shlex.quote(REMOTE_SHELL_BINDING_SCRIPT)} bifrost-bind {operation}"),
+        capture_output=True, text=True, timeout=COMMAND_TIMEOUT_S,
+    )
+    if edited.returncode != 0:
+        raise SystemExit(f"{machine['label']}: editing the shell rc file failed: {edited.stderr.strip()}")
+    outcome, _, rc_file = edited.stdout.strip().partition(" ")
+    return outcome, rc_file
 
 
 def open_clicked_link(url):
@@ -1553,14 +1561,14 @@ bifrost brings herdr saved machines to this computer's browser.
             http://files.<machine>.localhost/...
 
 <machine> is the herdr machine label: `herdr machine rename <id> --label afk`.
-The daemon starts with herdr. `bifrost setup <machine>` once per machine makes
+The daemon starts with herdr. `bifrost bind <machine>` once per machine makes
 the URLs its agents open come here.
 """
 
 EPILOG = f"""\
 examples:
   bifrost status                          list machines, ports and their URLs
-  bifrost setup afk                       send the URLs afk opens to this browser
+  bifrost bind afk                        send the URLs afk opens to this browser
   bifrost open afk:~/project/report.html  open a remote file in this browser
   bifrost forward afk:1455                localhost:1455 here reaches afk:1455
   bifrost logs -f                         follow the daemon log
@@ -1595,16 +1603,22 @@ def command_line():
     )
     forward_command.add_argument("target", metavar="<machine>:<port>", help="machine label, a colon, then the port")
     forward_command.add_argument("--stop", action="store_true", help="remove the forward instead")
-    setup_command = commands.add_parser(
-        "setup", help="make the URLs a machine's agents open come to this browser",
+    bind_command = commands.add_parser(
+        "bind", help="make the URLs a machine's agents open come to this browser",
         description="Install the bifrost opener on a machine as ~/.local/share/bifrost/bin/xdg-open, and set PATH and "
                     "BROWSER in the rc file of its login shell (~/.zshenv, ~/.bashrc or ~/.profile). Run once per "
                     "machine; the daemon keeps the opener up to date.",
-        epilog="examples:\n  bifrost setup afk\n  bifrost setup --undo afk",
+        epilog="example:\n  bifrost bind afk",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    setup_command.add_argument("machine", metavar="<machine>", help="machine label")
-    setup_command.add_argument("--undo", action="store_true", help="remove the opener and the rc file lines")
+    bind_command.add_argument("machine", metavar="<machine>", help="machine label")
+    unbind_command = commands.add_parser(
+        "unbind", help="undo `bind`: remove the opener and the rc file lines",
+        description="Remove the bifrost opener from a machine, and the PATH and BROWSER lines `bifrost bind` added.",
+        epilog="example:\n  bifrost unbind afk",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    unbind_command.add_argument("machine", metavar="<machine>", help="machine label")
     open_link_command = commands.add_parser(
         "open-link", help="open a localhost link on the machine herdr shows (Ctrl+click runs this)",
     )
@@ -1651,8 +1665,10 @@ def main():
             forward_same_port(arguments.target, should_cancel=arguments.stop)
         case "logs":
             show_logs(arguments.n, arguments.follow)
-        case "setup":
-            set_up_machine(arguments.machine, should_undo=arguments.undo)
+        case "bind":
+            bind_machine(arguments.machine)
+        case "unbind":
+            unbind_machine(arguments.machine)
         case "open-link":
             if not arguments.url:
                 parser.error("open-link needs a URL")

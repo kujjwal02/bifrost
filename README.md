@@ -11,7 +11,7 @@ Named after the rainbow bridge between worlds in Norse myth.
 ![What bifrost does: a remote dev server, a link, a file and a Ctrl+clicked localhost link each open in the local browser](docs/bifrost.svg)
 
 bifrost reuses the SSH details herdr already has. It needs no server, account or VPN, and installs nothing
-on the remote unless you run `bifrost setup`. [How it works](docs/architecture.md) has the design and diagrams.
+on the remote unless you run `bifrost bind`. [How it works](docs/architecture.md) has the design and diagrams.
 
 ## Install
 
@@ -22,7 +22,7 @@ key and no prompt.
 ```sh
 herdr plugin install kujjwal02/bifrost
 herdr plugin action invoke kujjwal02.bifrost.install-cli   # optional: `bifrost` in ~/.local/bin
-bifrost setup afk                                          # once per machine, for links and files
+bifrost bind afk                                           # once per machine, for links and files
 ```
 
 The daemon starts with herdr. Bind the status popup to a key in `~/.config/herdr/config.toml`:
@@ -50,7 +50,7 @@ For a tool that insists on `localhost:<port>`, such as an OAuth callback or an h
 
 ![gh auth login on afk opens a herdr popup asking to open github.com/login/device](docs/links.svg)
 
-After `bifrost setup afk`, a link that an agent opens on afk opens here. `xdg-open`, `$BROWSER`, `gh` and
+After `bifrost bind afk`, a link that an agent opens on afk opens here. `xdg-open`, `$BROWSER`, `gh` and
 the npm `open` package all go through it.
 
 - The machine's own pages (`http://localhost:<port>`) and files open at once.
@@ -78,7 +78,7 @@ listens on this computer's port 5173.
 | Command | Does |
 | --- | --- |
 | `bifrost status` | list machines, routed ports and their URLs |
-| `bifrost setup <machine>` / `--undo` | install or remove the opener on a machine |
+| `bifrost bind <machine>` / `unbind` | install or remove the opener on a machine |
 | `bifrost open <machine>:<path>` | open a remote file in this browser |
 | `bifrost forward <machine>:<port>` / `--stop` | add or remove a same-port `localhost:<port>` forward |
 | `bifrost logs [-f]` | show or follow the daemon log |
@@ -111,13 +111,13 @@ Optional. Put `config.json` in the folder `herdr plugin config-dir kujjwal02.bif
 | a machine shows `retrying` | `ssh <target> true` must log in without a prompt |
 | a port is missing | the server must listen on loopback or `0.0.0.0` as your user |
 | `http://localhost/` does not load | another program holds port 80; set `router_port` |
-| links on the remote open there | run `bifrost setup <machine>`, then restart the remote shell and agent |
+| links on the remote open there | run `bifrost bind <machine>`, then restart the remote shell and agent |
 | the daemon is down | `bifrost status` prints the last crash; `bifrost logs` has the rest |
 
 ## Uninstall
 
 ```sh
-bifrost setup --undo afk          # for each machine you set up
+bifrost unbind afk              # for each machine you bound
 bifrost stop
 herdr plugin uninstall kujjwal02.bifrost
 rm ~/.local/bin/bifrost
