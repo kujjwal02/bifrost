@@ -1,0 +1,8 @@
+target-version = "py310"
+line-length = 160
+
+[lint]
+select = ["E", "F", "W", "B", "UP", "SIM", "PLE"]
+# The lock file and the confirm popup's terminal stay open for the process's life.
+# try/except/pass blocks carry a comment saying why the error is expected.
+ignore = ["SIM115", "SIM105"]

@@ -1,0 +1,12 @@
+#!/bin/sh
+# Runs ferry.py on the first Python 3.10 or newer on PATH. The code uses
+# `match`, and macOS ships Python 3.9 as /usr/bin/python3.
+plugin_root=$(dirname "$(readlink -f "$0")")
+for python in python3.14 python3.13 python3.12 python3.11 python3.10 python3; do
+  if command -v "$python" >/dev/null 2>&1 \
+    && "$python" -c 'import sys; sys.exit(sys.version_info < (3, 10))' 2>/dev/null; then
+    exec "$python" "$plugin_root/ferry.py" "$@"
+  fi
+done
+echo "ferry: needs Python 3.10 or newer on PATH" >&2
+exit 1

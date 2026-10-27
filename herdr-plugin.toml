@@ -1,0 +1,66 @@
+id = "kujjwal02.ferry"
+name = "ferry"
+version = "1.0.0"
+min_herdr_version = "0.9.0"
+description = "Open your remote machines' ports, links and files in this computer's browser at http://<port>.<machine>.localhost"
+platforms = ["macos", "linux"]
+
+# One-shot: starts the background daemon unless one runs, then exits. The
+# daemon exits by itself once this herdr server is gone.
+[[startup]]
+command = ["sh", "ferry", "start"]
+
+# Brings a crashed daemon back on the next workspace switch, and moves the
+# daemon to new code after `herdr plugin update`. A no-op otherwise.
+[[events]]
+on = "workspace.focused"
+command = ["sh", "ferry", "start"]
+
+[[actions]]
+id = "status"
+title = "Ferry: status"
+description = "Show each machine's ports and their URLs"
+command = ["sh", "ferry", "show"]
+
+[[actions]]
+id = "restart"
+title = "Ferry: restart"
+description = "Reconnect every machine and redo its forwards"
+command = ["sh", "ferry", "restart"]
+
+[[actions]]
+id = "install-cli"
+title = "Ferry: install the ferry command"
+description = "Put a `ferry` command in ~/.local/bin"
+command = ["sh", "ferry", "install-cli"]
+
+[[actions]]
+id = "open-link"
+title = "Ferry: open a localhost link"
+description = "Open a clicked localhost link on the machine herdr shows"
+command = ["sh", "ferry", "open-link"]
+
+# Ctrl+click on http://localhost:5173 in a remote pane opens that machine's
+# server, not whatever listens on this computer's port 5173.
+[[link_handlers]]
+id = "localhost"
+title = "Open on the remote machine"
+pattern = "^http://(localhost|127\\.0\\.0\\.1|0\\.0\\.0\\.0|\\[::1\\])(:[0-9]+)?(/.*)?$"
+action = "open-link"
+
+[[panes]]
+id = "status"
+title = "Ferry"
+placement = "popup"
+width = "70%"
+height = 16
+command = ["sh", "ferry", "status", "--wait"]
+
+# Asks before a remote opens a page that is not its own.
+[[panes]]
+id = "confirm"
+title = "Ferry: open this page?"
+placement = "popup"
+width = "70%"
+height = 12
+command = ["sh", "ferry", "confirm"]

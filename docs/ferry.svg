@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="300" viewBox="0 0 880 300" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+  <rect width="880" height="300" rx="16" fill="#1e1e2e"/>
+  <!-- remote terminal -->
+  <g transform="translate(32 40)">
+    <rect width="360" height="220" rx="10" fill="#181825" stroke="#313244"/>
+    <circle cx="20" cy="18" r="5" fill="#f38ba8"/><circle cx="38" cy="18" r="5" fill="#f9e2af"/><circle cx="56" cy="18" r="5" fill="#a6e3a1"/>
+    <text x="180" y="22" fill="#6c7086" font-size="12" text-anchor="middle">afk: remote machine</text>
+    <text x="20" y="62" fill="#a6e3a1" font-size="14">$ <tspan fill="#cdd6f4">npm run dev</tspan></text>
+    <text x="38" y="88" fill="#cdd6f4" font-size="14">VITE ready</text>
+    <text x="38" y="112" fill="#cdd6f4" font-size="14">➜ Local: <tspan fill="#89b4fa">http://localhost:5173/</tspan></text>
+    <text x="20" y="150" fill="#a6e3a1" font-size="14">$ <tspan fill="#cdd6f4">xdg-open report.html</tspan></text>
+    <text x="20" y="188" fill="#a6e3a1" font-size="14">$ <tspan fill="#cdd6f4">gh auth login --web</tspan></text>
+  </g>
+  <!-- ferry -->
+  <g transform="translate(410 150)">
+    <path d="M0 0 H52" stroke="#cba6f7" stroke-width="2.5" stroke-dasharray="6 6"/>
+    <path d="M52 -7 L64 0 L52 7 Z" fill="#cba6f7"/>
+    <text x="32" y="-16" fill="#cba6f7" font-size="15" font-weight="700" text-anchor="middle">ferry</text>
+    <text x="32" y="26" fill="#6c7086" font-size="11" text-anchor="middle">over SSH</text>
+  </g>
+  <!-- local browser -->
+  <g transform="translate(488 40)">
+    <rect width="360" height="220" rx="10" fill="#eff1f5" stroke="#313244"/>
+    <rect width="360" height="36" rx="10" fill="#dce0e8"/>
+    <rect y="26" width="360" height="10" fill="#dce0e8"/>
+    <rect x="14" y="8" width="332" height="20" rx="10" fill="#ffffff"/>
+    <text x="28" y="22" fill="#4c4f69" font-size="12">5173.afk.localhost</text>
+    <text x="20" y="66" fill="#6c6f85" font-size="11" font-family="system-ui, sans-serif">YOUR COMPUTER'S BROWSER</text>
+    <text x="20" y="96" fill="#1e66f5" font-size="13">http://5173.afk.localhost</text>
+    <text x="20" y="114" fill="#6c6f85" font-size="11" font-family="system-ui, sans-serif">the dev server, no port clash</text>
+    <text x="20" y="144" fill="#1e66f5" font-size="13">http://files.afk.localhost/…</text>
+    <text x="20" y="162" fill="#6c6f85" font-size="11" font-family="system-ui, sans-serif">the remote file, with its CSS and images</text>
+    <text x="20" y="192" fill="#1e66f5" font-size="13">github.com/login/device</text>
+    <text x="20" y="210" fill="#6c6f85" font-size="11" font-family="system-ui, sans-serif">after a yes in the herdr popup</text>
+  </g>
+</svg>
