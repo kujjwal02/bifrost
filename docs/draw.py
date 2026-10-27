@@ -126,8 +126,75 @@ def hero():
                "What ferry does: remote ports, links, files and Ctrl+clicked links open in this computer's browser")
 
 
+def box(x, y, width, height, title, subtitle, fill=MANTLE, stroke=SURFACE, title_fill=TEXT, sub_fill=OVERLAY):
+    return (f'<rect x="{x}" y="{y}" width="{width}" height="{height}" rx="8" fill="{fill}" stroke="{stroke}"/>'
+            + text(x + width / 2, y + height / 2 - 3, escape(title), title_fill, 13, SANS, 600, "middle")
+            + text(x + width / 2, y + height / 2 + 14, escape(subtitle), sub_fill, 10.5, MONO, anchor="middle"))
+
+
+def link(x1, y1, x2, y2, color, both_ways=False, dashed=False):
+    dash = ' stroke-dasharray="5 4"' if dashed else ""
+    heads = f' marker-end="url(#head-{color[1:]})"' + (f' marker-start="url(#tail-{color[1:]})"' if both_ways else "")
+    return f'<path d="M{x1} {y1} L{x2} {y2}" stroke="{color}" stroke-width="2"{dash}{heads}/>'
+
+
+def markers(colors):
+    return "<defs>" + "".join(
+        f'<marker id="head-{c[1:]}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">'
+        f'<path d="M0 0 L10 5 L0 10 z" fill="{c}"/></marker>'
+        f'<marker id="tail-{c[1:]}" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto">'
+        f'<path d="M10 0 L0 5 L10 10 z" fill="{c}"/></marker>'
+        for c in colors) + "</defs>"
+
+
+def architecture():
+    """One SSH master per machine carries three kinds of traffic; each gets a lane."""
+    lanes = {"ports": (110, BLUE), "files": (200, GREEN), "watch": (290, MAUVE)}
+    body = [markers([BLUE, GREEN, MAUVE, OVERLAY])]
+    # Zones.
+    body.append(f'<rect x="196" y="40" width="228" height="306" rx="12" fill="none" stroke="{SURFACE}" stroke-dasharray="4 4"/>')
+    body.append(text(310, 62, "ferry daemon", TEXT, 13, SANS, 700, "middle"))
+    body.append(f'<rect x="604" y="40" width="336" height="392" rx="12" fill="none" stroke="{SURFACE}" stroke-dasharray="4 4"/>')
+    body.append(text(772, 62, "remote machine (afk)", TEXT, 13, SANS, 700, "middle"))
+    body.append(text(100, 30, "your computer", OVERLAY, 12, SANS, 600, "middle"))
+    # The SSH pipe.
+    body.append(f'<rect x="424" y="78" width="180" height="244" rx="22" fill="{MANTLE}" stroke="{SURFACE}"/>')
+    body.append(text(514, 344, "one SSH master per machine", OVERLAY, 11, SANS, 600, "middle"))
+    lane_labels = {"ports": "port forwards", "files": "file reads", "watch": "ticks ⇄ ports, opens"}
+    for name, (y, color) in lanes.items():
+        both = name == "watch"
+        body.append(link(405, y, 620, y, color, both_ways=both))
+        body.append(text(514, y - 9, lane_labels[name], color, 11, SANS, 600, "middle"))
+    # Left column.
+    body.append(f'<rect x="30" y="78" width="140" height="154" rx="8" fill="{LATTE_BASE}" stroke="{SURFACE}"/>')
+    body.append(text(100, 100, "Browser", LATTE_TEXT, 13, SANS, 600, "middle"))
+    body.append(text(100, 114, "5173.afk.localhost", LATTE_BLUE, 10.5, anchor="middle"))
+    body.append(text(100, 204, "files.afk.localhost", LATTE_BLUE, 10.5, anchor="middle"))
+    body.append(box(30, 262, 140, 56, "herdr", "machines, popups"))
+    body.append(link(170, 110, 213, 110, BLUE))
+    body.append(link(170, 200, 213, 200, GREEN))
+    body.append(link(170, 290, 213, 290, OVERLAY, both_ways=True))
+    # Daemon rows.
+    body.append(box(215, 85, 190, 50, "router: port route", "Host → unix socket", stroke=BLUE))
+    body.append(box(215, 175, 190, 50, "router: file link", "HMAC check, stream", stroke=GREEN))
+    body.append(box(215, 265, 190, 50, "machine thread", "forwards, open rules", stroke=MAUVE))
+    # Remote rows.
+    body.append(box(622, 85, 300, 50, "dev server :5173", "any listener of your user, port ≥ 1024", stroke=BLUE))
+    body.append(box(622, 175, 300, 50, "sh: realpath -e, cat", "refuses files outside the folder", stroke=GREEN))
+    body.append(box(622, 265, 300, 50, "watch.sh", "reads /proc/net/tcp every tick", stroke=MAUVE))
+    # The opener feeding watch.sh.
+    body.append(box(622, 362, 70, 50, "agent", "xdg-open"))
+    body.append(box(710, 362, 96, 50, "opener", "as xdg-open"))
+    body.append(box(824, 362, 98, 50, "queue", "~/.cache/ferry"))
+    body.append(link(692, 387, 708, 387, OVERLAY))
+    body.append(link(806, 387, 822, 387, OVERLAY))
+    body.append(link(873, 362, 873, 317, OVERLAY))
+    return svg(960, 452, "".join(body), "ferry architecture: one SSH master per machine carries port forwards, file reads and the watch protocol")
+
+
 def main():
     (DOCS / "ferry.svg").write_text(hero())
+    (DOCS / "architecture.svg").write_text(architecture())
     for name, draw in LANES.items():
         body = f'<g transform="translate(20 20)">{draw()}</g>'
         (DOCS / f"{name}.svg").write_text(svg(LANE_W + 40, LANE_H + 22, body, f"ferry: {name}"))

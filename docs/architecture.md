@@ -7,38 +7,7 @@ for process names.
 
 ## Pieces
 
-```mermaid
-%%{init: {"theme": "base", "themeVariables": {"fontFamily": "ui-sans-serif, system-ui", "lineColor": "#7f849c"}}}%%
-flowchart LR
-  subgraph computer["Your computer"]
-    browser["Browser"]
-    router["Router<br/>port 80"]
-    daemon["ferry daemon<br/>ferry.py"]
-    herdr["herdr server"]
-    sockets[("unix-socket forwards<br/>~/.ssh/sockets/ferry-*")]
-  end
-  subgraph remote["Remote machine (afk)"]
-    watch["watch.sh"]
-    opener["remote-open.sh<br/>as xdg-open"]
-    spool[("~/.cache/ferry<br/>open queue")]
-    server["dev server<br/>localhost:5173"]
-    agent["agent"]
-  end
-
-  browser -- "5173.afk.localhost" --> router
-  router -- "raw bytes" --> sockets
-  sockets == "SSH master" ==> server
-  daemon -- "machine list, popups,<br/>notifications" --- herdr
-  daemon -- "ssh -O forward" --> sockets
-  daemon <== "ticks / ports + open lines" ==> watch
-  agent -- "xdg-open URL" --> opener --> spool --> watch
-  watch -. "reads /proc/net/tcp" .-> server
-
-  classDef local fill:#eff1f5,stroke:#1e66f5,color:#4c4f69
-  classDef far fill:#1e1e2e,stroke:#cba6f7,color:#cdd6f4
-  class browser,router,daemon,herdr,sockets local
-  class watch,opener,spool,server,agent far
-```
+![ferry architecture: one SSH master per machine carries port forwards, file reads and the watch protocol](architecture.svg)
 
 | Piece | Runs on | Job |
 | --- | --- | --- |
@@ -60,7 +29,7 @@ The master overrides `RemoteCommand`, `RequestTTY` and configured forwards, so a
 for interactive use cannot break it. Keys must work without a prompt (`BatchMode=yes`).
 
 ```mermaid
-%%{init: {"theme": "base", "themeVariables": {"fontFamily": "ui-sans-serif, system-ui"}}}%%
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "ui-sans-serif, system-ui, sans-serif", "fontSize": "15px", "primaryColor": "#eff1f5", "primaryBorderColor": "#8839ef", "primaryTextColor": "#4c4f69", "lineColor": "#7c7f93", "secondaryColor": "#e6e9ef", "tertiaryColor": "#f5f5fa", "edgeLabelBackground": "#ffffff", "actorBkg": "#eff1f5", "actorBorder": "#8839ef", "actorTextColor": "#4c4f69", "signalColor": "#5c5f77", "signalTextColor": "#4c4f69", "sequenceNumberColor": "#ffffff", "labelBoxBkgColor": "#eff1f5"}}}%%
 stateDiagram-v2
   [*] --> connecting: machine enabled in herdr
   connecting --> connected: first ports line
@@ -98,7 +67,7 @@ address, and its port is `min_port` or higher. One `awk` program reads `/proc/ne
 ## Routing a port
 
 ```mermaid
-%%{init: {"theme": "base", "themeVariables": {"fontFamily": "ui-sans-serif, system-ui"}}}%%
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "ui-sans-serif, system-ui, sans-serif", "fontSize": "15px", "primaryColor": "#eff1f5", "primaryBorderColor": "#8839ef", "primaryTextColor": "#4c4f69", "lineColor": "#7c7f93", "secondaryColor": "#e6e9ef", "tertiaryColor": "#f5f5fa", "edgeLabelBackground": "#ffffff", "actorBkg": "#eff1f5", "actorBorder": "#8839ef", "actorTextColor": "#4c4f69", "signalColor": "#5c5f77", "signalTextColor": "#4c4f69", "sequenceNumberColor": "#ffffff", "labelBoxBkgColor": "#eff1f5"}}}%%
 sequenceDiagram
   autonumber
   participant S as dev server (afk)
@@ -130,20 +99,16 @@ insist on `localhost:<port>`.
 ## Opening what the remote opens
 
 ```mermaid
-%%{init: {"theme": "base", "themeVariables": {"fontFamily": "ui-sans-serif, system-ui"}}}%%
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "ui-sans-serif, system-ui, sans-serif", "fontSize": "15px", "primaryColor": "#eff1f5", "primaryBorderColor": "#8839ef", "primaryTextColor": "#4c4f69", "lineColor": "#7c7f93", "secondaryColor": "#e6e9ef", "tertiaryColor": "#f5f5fa", "edgeLabelBackground": "#ffffff", "actorBkg": "#eff1f5", "actorBorder": "#8839ef", "actorTextColor": "#4c4f69", "signalColor": "#5c5f77", "signalTextColor": "#4c4f69", "sequenceNumberColor": "#ffffff", "labelBoxBkgColor": "#eff1f5"}}}%%
 flowchart TD
-  request["open request from watch.sh"] --> file{"file path or file:// ?"}
-  file -- yes --> filelink["signed file link<br/>files.afk.localhost/…"]
-  file -- no --> local{"host is localhost,<br/>127.0.0.1, 0.0.0.0 or ::1 ?"}
-  local -- no --> popup["confirm popup in herdr"]
-  local -- yes --> routed{"port routed<br/>within 5 s ?"}
-  routed -- no --> nothing["notification: nothing listens"]
-  routed -- yes --> https{"https ?"}
-  https -- yes --> hint["notification: use ferry forward"]
-  https -- no --> page["route URL<br/>5173.afk.localhost/…"]
-  filelink --> budget{"more than 5 automatic<br/>opens this minute ?"}
+  request["open request from watch.sh"] --> kind{"what does it name?"}
+  kind -- "a file or file:// URL" --> filelink["signed file link<br/>files.afk.localhost/…"]
+  kind -- "http://localhost:PORT<br/>with PORT routed" --> page["route URL<br/>5173.afk.localhost/…"]
+  kind -- "https://localhost or<br/>no listener in 5 s" --> notify["notification<br/>with the fix"]
+  kind -- "any other URL" --> popup["confirm popup<br/>in herdr"]
+  filelink --> budget{"over 5 automatic<br/>opens this minute?"}
   page --> budget
-  budget -- no --> open["open in this browser"]
+  budget -- no --> open(["opens in this browser"])
   budget -- yes --> popup
   popup -- "Enter or y" --> open
 
@@ -165,7 +130,7 @@ the herdr confirm popup with `herdr plugin pane open` and drops pages older than
 ## Serving a remote file
 
 ```mermaid
-%%{init: {"theme": "base", "themeVariables": {"fontFamily": "ui-sans-serif, system-ui"}}}%%
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "ui-sans-serif, system-ui, sans-serif", "fontSize": "15px", "primaryColor": "#eff1f5", "primaryBorderColor": "#8839ef", "primaryTextColor": "#4c4f69", "lineColor": "#7c7f93", "secondaryColor": "#e6e9ef", "tertiaryColor": "#f5f5fa", "edgeLabelBackground": "#ffffff", "actorBkg": "#eff1f5", "actorBorder": "#8839ef", "actorTextColor": "#4c4f69", "signalColor": "#5c5f77", "signalTextColor": "#4c4f69", "sequenceNumberColor": "#ffffff", "labelBoxBkgColor": "#eff1f5"}}}%%
 sequenceDiagram
   autonumber
   participant B as browser
@@ -192,8 +157,8 @@ daemon's memory.
 ## Daemon lifecycle
 
 ```mermaid
-%%{init: {"theme": "base", "themeVariables": {"fontFamily": "ui-sans-serif, system-ui"}}}%%
-flowchart LR
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "ui-sans-serif, system-ui, sans-serif", "fontSize": "15px", "primaryColor": "#eff1f5", "primaryBorderColor": "#8839ef", "primaryTextColor": "#4c4f69", "lineColor": "#7c7f93", "secondaryColor": "#e6e9ef", "tertiaryColor": "#f5f5fa", "edgeLabelBackground": "#ffffff", "actorBkg": "#eff1f5", "actorBorder": "#8839ef", "actorTextColor": "#4c4f69", "signalColor": "#5c5f77", "signalTextColor": "#4c4f69", "sequenceNumberColor": "#ffffff", "labelBoxBkgColor": "#eff1f5"}}}%%
+flowchart TD
   startup["herdr startup hook"] --> start["ferry start"]
   focus["workspace.focused hook"] --> start
   start --> running{"daemon running<br/>from this plugin folder ?"}
@@ -219,7 +184,7 @@ as a hard Python crash, and is cleared on every start.
 ## Security model
 
 ```mermaid
-%%{init: {"theme": "base", "themeVariables": {"fontFamily": "ui-sans-serif, system-ui"}}}%%
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "ui-sans-serif, system-ui, sans-serif", "fontSize": "15px", "primaryColor": "#eff1f5", "primaryBorderColor": "#8839ef", "primaryTextColor": "#4c4f69", "lineColor": "#7c7f93", "secondaryColor": "#e6e9ef", "tertiaryColor": "#f5f5fa", "edgeLabelBackground": "#ffffff", "actorBkg": "#eff1f5", "actorBorder": "#8839ef", "actorTextColor": "#4c4f69", "signalColor": "#5c5f77", "signalTextColor": "#4c4f69", "sequenceNumberColor": "#ffffff", "labelBoxBkgColor": "#eff1f5"}}}%%
 flowchart LR
   lan["device on your network"] -. "refused: not loopback" .-x router
   rebind["DNS-rebinding page"] -. "421: Host not *.localhost" .-x router
